@@ -1,61 +1,319 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- displays site properly based on user's device -->
+  <meta charset="UTF-8" />
+  <!-- 모바일 화면에서도 글자가 잘 보이도록 뷰포트를 설정합니다 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mortgage Repayment Calculator</title>
 
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon-32x32.png">
-  
-  <title>Frontend Mentor | Mortgage repayment calculator</title>
+  <!-- Google Fonts에서 Plus Jakarta Sans 폰트를 불러옵니다 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700&display=swap" rel="stylesheet" />
 
-  <!-- Feel free to remove these styles or customise in your own stylesheet 👍 -->
+  <!-- Tailwind CSS CDN: 별도 CSS 파일 없이 유틸리티 클래스만으로 스타일을 적용합니다 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
-    .attribution { font-size: 0.6875rem; text-align: center; }
-    .attribution a { color: hsl(228, 45%, 44%); }
+    /*
+      결과 섹션(오른쪽 패널)의 모서리를 화면 크기에 따라 다르게 설정합니다.
+      - 모바일: 아래쪽 두 모서리만 둥글게 (위쪽은 카드 안에 들어가므로 직각)
+      - 데스크탑(768px 이상): 왼쪽 하단만 크게 둥글게, 나머지는 직각
+    */
+
+    /* 모바일 기본: 하단 모서리만 둥글게 */
+    #resultsSection {
+      border-radius: 0 0 1.5rem 1.5rem;
+    }
+
+    /* 데스크탑(md 이상): 왼쪽 하단만 크게 둥글게 처리 */
+    @media (min-width: 768px) {
+      #resultsSection {
+        border-radius: 0 1.5rem 1.5rem 5rem;
+        /* 상단-좌: 0, 상단-우: 24px, 하단-우: 24px, 하단-좌: 80px */
+      }
+    }
   </style>
+
+  <script>
+    // Tailwind 설정: style-guide.md의 색상과 폰트를 커스텀 테마로 등록합니다
+    tailwind.config = {
+      theme: {
+        extend: {
+          // 디자인 시스템의 색상들을 이름으로 등록합니다
+          colors: {
+            lime: "#D8DB2F",        // 주요 강조색 (버튼, 선택 상태)
+            "lime-dark": "#C5C829", // 버튼 호버(마우스를 올렸을 때) 색상
+            "err-red": "#D73328",   // 오류 메시지 색상
+            "slate-100": "#E4F4FD", // 가장 연한 슬레이트 (입력창 뱃지 배경)
+            "slate-300": "#9ABED5", // 중간 연한 슬레이트
+            "slate-500": "#6B94A8", // 중간 슬레이트 (설명 텍스트)
+            "slate-700": "#4E6E7E", // 진한 슬레이트 (라벨 텍스트)
+            "slate-900": "#133041", // 가장 진한 슬레이트 (제목, 결과창 배경)
+          },
+          // Plus Jakarta Sans 폰트를 기본 폰트로 설정합니다
+          fontFamily: {
+            sans: ["Plus Jakarta Sans", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
 </head>
-<body>
 
-  Mortgage Calculator
-  Clear All
+<!-- body: 전체 화면을 슬레이트 100 배경으로 채우고, 세로/가로 중앙 정렬합니다 -->
 
-  Mortgage Amount
+<body class="min-h-screen bg-slate-100 flex items-center justify-center font-sans p-4 md:p-6">
 
-  Mortgage Term
+  <!--
+    ==========================================
+    메인 컨테이너: 전체 앱을 감싸는 카드
+    - 모바일: 세로로 쌓임 (flex-col)
+    - 데스크탑(md 이상): 좌우로 나란히 (md:flex-row)
+    - 오른쪽 상단/하단 모서리가 크게 둥근 것은 결과 섹션에서 처리합니다
+    ==========================================
+  -->
+  <main class="w-full max-w-4xl bg-white rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-lg" role="main"
+    aria-label="모기지 상환 계산기">
 
-  Interest Rate
+    <!-- ========================================
+         왼쪽 영역: 입력 폼 (Form)
+         ======================================== -->
+    <section class="flex-1 p-6 md:p-10" aria-label="모기지 정보 입력 폼">
 
-  Mortgage Type
-  Repayment
-  Interest Only
+      <!-- 제목 줄: "Mortgage Calculator"와 "Clear All" 버튼을 좌우 배치 -->
+      <div class="flex items-center justify-between mb-8 flex-wrap gap-2">
+        <!-- 메인 제목 -->
+        <h1 class="text-2xl font-bold text-slate-900 leading-tight tracking-tight">
+          Mortgage Calculator
+        </h1>
+        <!-- Clear All 버튼: 모든 입력값을 초기화하는 버튼입니다 -->
+        <button id="clearAllBtn" type="button"
+          class="text-slate-500 underline text-sm font-medium hover:text-slate-900 transition-colors duration-200"
+          aria-label="모든 입력값 초기화">
+          Clear All
+        </button>
+      </div>
 
-  Calculate Repayments
+      <!-- 입력 폼: 제출 시 새로고침을 막기 위해 JS에서 e.preventDefault()를 사용합니다 -->
+      <form id="mortgageForm" novalidate aria-label="모기지 계산 입력 양식">
 
-  <!-- Empty results start -->
+        <!-- ── 1. 모기지 금액 입력 ── -->
+        <div class="mb-5">
+          <!-- 라벨: input의 id와 for 속성을 맞춰 접근성을 높입니다 -->
+          <label for="mortgageAmount" class="block text-sm font-medium text-slate-700 mb-2">
+            Mortgage Amount
+          </label>
 
-  Results shown here
+          <!--
+            입력창 래퍼: 테두리를 감싸는 div입니다.
+            focus-within: 안쪽 input에 포커스가 오면 테두리가 라임색으로 바뀝니다.
+            has-error 클래스가 JS에 의해 추가되면 빨간 테두리로 바뀝니다.
+          -->
+          <div id="amountWrapper"
+            class="flex rounded-lg border border-slate-300 overflow-hidden focus-within:border-lime focus-within:ring-1 focus-within:ring-lime transition-colors duration-200 cursor-text">
+            <!-- 왼쪽 뱃지: £ 기호 (파운드 통화) -->
+            <span
+              class="badge-left flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 font-bold text-base select-none border-r border-slate-300"
+              aria-hidden="true">
+              £
+            </span>
+            <!-- 숫자 입력창 -->
+            <input type="number" id="mortgageAmount" name="mortgageAmount" placeholder="0" min="0"
+              class="flex-1 px-4 py-3 text-slate-900 font-bold text-base outline-none bg-white placeholder-slate-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              aria-describedby="amountError" aria-required="true" />
+          </div>
+          <!-- 오류 메시지: 기본적으로 숨겨져 있다가 JS가 보여줍니다 -->
+          <p id="amountError" class="hidden text-err-red text-xs mt-1 font-medium" role="alert">
+            This field is required
+          </p>
+        </div>
 
-  Complete the form and click “calculate repayments” to see what 
-  your monthly repayments would be.
+        <!-- ── 2, 3. 모기지 기간 + 이자율 (모바일: 세로 / 태블릿 이상: 나란히) ── -->
+        <div class="flex flex-col sm:flex-row gap-5 mb-5">
 
-  <!-- Empty results end -->
+          <!-- 2. 모기지 기간 입력 -->
+          <div class="flex-1">
+            <label for="mortgageTerm" class="block text-sm font-medium text-slate-700 mb-2">
+              Mortgage Term
+            </label>
 
-  <!-- Completed results start -->
+            <!-- 입력창 래퍼 -->
+            <div id="termWrapper"
+              class="flex rounded-lg border border-slate-300 overflow-hidden focus-within:border-lime focus-within:ring-1 focus-within:ring-lime transition-colors duration-200 cursor-text">
+              <!-- 숫자 입력창 -->
+              <input type="number" id="mortgageTerm" name="mortgageTerm" placeholder="0" min="1" max="40"
+                class="flex-1 px-4 py-3 text-slate-900 font-bold text-base outline-none bg-white placeholder-slate-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                aria-describedby="termError" aria-required="true" />
+              <!-- 오른쪽 뱃지: "years" 단위 -->
+              <span
+                class="badge-right flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 font-bold text-base select-none border-l border-slate-300"
+                aria-hidden="true">
+                years
+              </span>
+            </div>
+            <!-- 오류 메시지 -->
+            <p id="termError" class="hidden text-err-red text-xs mt-1 font-medium" role="alert">
+              This field is required
+            </p>
+          </div>
 
-  Your results
+          <!-- 3. 이자율 입력 -->
+          <div class="flex-1">
+            <label for="interestRate" class="block text-sm font-medium text-slate-700 mb-2">
+              Interest Rate
+            </label>
 
-  Your results are shown below based on the information you provided. 
-  To adjust the results, edit the form and click “calculate repayments” again.
+            <!-- 입력창 래퍼 -->
+            <div id="rateWrapper"
+              class="flex rounded-lg border border-slate-300 overflow-hidden focus-within:border-lime focus-within:ring-1 focus-within:ring-lime transition-colors duration-200 cursor-text">
+              <!-- 숫자 입력창 -->
+              <input type="number" id="interestRate" name="interestRate" placeholder="0" min="0" step="0.01"
+                class="flex-1 px-4 py-3 text-slate-900 font-bold text-base outline-none bg-white placeholder-slate-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                aria-describedby="rateError" aria-required="true" />
+              <!-- 오른쪽 뱃지: "%" 단위 -->
+              <span
+                class="badge-right flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 font-bold text-base select-none border-l border-slate-300"
+                aria-hidden="true">
+                %
+              </span>
+            </div>
+            <!-- 오류 메시지 -->
+            <p id="rateError" class="hidden text-err-red text-xs mt-1 font-medium" role="alert">
+              This field is required
+            </p>
+          </div>
+        </div>
 
-  Your monthly repayments
+        <!-- ── 4. 모기지 유형 선택 (라디오 버튼) ── -->
+        <div class="mb-8">
+          <p class="text-sm font-medium text-slate-700 mb-2">Mortgage Type</p>
 
-  Total you'll repay over the term
+          <!--
+            fieldset + legend: 라디오 버튼 그룹을 시맨틱하게 묶는 태그입니다.
+            스크린리더가 "모기지 유형 선택, Repayment / Interest Only" 라고 읽어줍니다.
+          -->
+          <fieldset aria-label="모기지 유형 선택">
+            <legend class="sr-only">모기지 유형</legend><!-- sr-only: 화면에 보이지 않지만 스크린리더에는 읽힘 -->
 
-  <!-- Completed results end -->
-  
-  <footer class="attribution">
-    Challenge by <a href="https://www.frontendmentor.io?ref=challenge">Frontend Mentor</a>. 
-    Coded by <a href="#">Your Name Here</a>.
-  </footer>
+            <!-- ── 라디오 옵션 1: Repayment (원리금 상환) ── -->
+            <label
+              class="radio-label flex items-center gap-4 border border-slate-300 rounded-lg px-5 py-3 mb-3 cursor-pointer hover:border-lime transition-colors duration-200 has-[:checked]:border-lime has-[:checked]:bg-lime/20"
+              aria-label="Repayment (원리금 균등상환) 선택">
+              <!--
+                peer: 이 input의 상태(checked)를 형제 요소가 감지할 수 있게 해주는 클래스입니다.
+                라디오 버튼 자체는 숨기고, 커스텀 원형 아이콘으로 대체합니다.
+              -->
+              <input type="radio" name="mortgageType" value="repayment" class="peer sr-only" />
+              <!-- 커스텀 라디오 원형 아이콘 -->
+              <span class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center flex-shrink-0
+                       peer-checked:border-lime" aria-hidden="true">
+                <!-- 선택됐을 때 나타나는 내부 채운 원 (peer-checked로 제어) -->
+                <span class="w-2.5 h-2.5 rounded-full bg-lime hidden peer-checked:block"></span>
+              </span>
+              <span class="font-bold text-slate-900">Repayment</span>
+            </label>
+
+            <!-- ── 라디오 옵션 2: Interest Only (이자만 상환) ── -->
+            <label
+              class="radio-label flex items-center gap-4 border border-slate-300 rounded-lg px-5 py-3 cursor-pointer hover:border-lime transition-colors duration-200 has-[:checked]:border-lime has-[:checked]:bg-lime/20"
+              aria-label="Interest Only (이자만 상환) 선택">
+              <input type="radio" name="mortgageType" value="interest-only" class="peer sr-only" />
+              <!-- 커스텀 라디오 원형 아이콘 -->
+              <span class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center flex-shrink-0
+                       peer-checked:border-lime" aria-hidden="true">
+                <span class="w-2.5 h-2.5 rounded-full bg-lime hidden peer-checked:block"></span>
+              </span>
+              <span class="font-bold text-slate-900">Interest Only</span>
+            </label>
+          </fieldset>
+
+          <!-- 모기지 유형 미선택 오류 메시지 -->
+          <p id="typeError" class="hidden text-err-red text-xs mt-2 font-medium" role="alert">
+            This field is required
+          </p>
+        </div>
+
+        <!-- ── 계산 버튼 ── -->
+        <button type="submit"
+          class="w-full flex items-center justify-center gap-3 bg-lime hover:bg-lime-dark text-slate-900 font-bold text-base py-4 px-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-lime focus:ring-offset-2"
+          aria-label="모기지 상환액 계산하기">
+          <!-- 계산기 아이콘 이미지 -->
+          <img src="assets/images/icon-calculator.svg" alt="" class="w-5 h-5" aria-hidden="true" />
+          Calculate Repayments
+        </button>
+
+      </form>
+    </section>
+
+    <!-- ========================================
+         오른쪽 영역: 결과 섹션
+         - 배경: 슬레이트 900 (네이비)
+         - 모바일: 하단에 위치, 상단 모서리 둥글게
+         - 데스크탑: 우측에 위치, 왼쪽 상단 + 하단 왼쪽 모서리만 크게 둥글게
+         ======================================== -->
+    <section class="flex-1 bg-slate-900 flex flex-col items-center justify-center p-6 md:p-10"
+      style="border-radius: 0 0 1.5rem 1.5rem;" id="resultsSection" aria-label="계산 결과 영역" aria-live="polite">
+
+      <!-- ── 대기 화면: 계산 전에 보이는 일러스트 화면 ── -->
+      <div id="emptyState" class="flex flex-col items-center text-center py-8 md:py-0">
+        <!-- 일러스트 이미지 -->
+        <img src="assets/images/illustration-empty.svg" alt="계산 결과 대기 중 일러스트 이미지" class="w-48 mb-8" />
+        <!-- 대기 화면 제목 -->
+        <h2 class="text-white font-bold text-2xl mb-4 tracking-tight">
+          Results shown here
+        </h2>
+        <!-- 대기 화면 설명 -->
+        <p class="text-slate-500 text-sm leading-relaxed max-w-xs">
+          Complete the form and click "calculate repayments" to see what
+          your monthly repayments would be.
+        </p>
+      </div>
+
+      <!-- ── 결과 화면: 계산 완료 후 보이는 결과 카드 (기본: 숨김) ── -->
+      <div id="resultsState" class="hidden w-full py-8 md:py-0">
+        <!-- 결과 제목 -->
+        <h2 class="text-white font-bold text-2xl mb-3 tracking-tight">
+          Your results
+        </h2>
+        <!-- 결과 설명 -->
+        <p class="text-slate-500 text-sm leading-relaxed mb-8">
+          Your results are shown below based on the information you provided.
+          To adjust the results, edit the form and click "calculate repayments" again.
+        </p>
+
+        <!--
+          결과 카드: 슬레이트 900보다 살짝 어두운 배경, 라임색 상단 테두리(border-t-4)
+          왼쪽이 아닌 상단에 라임색 강조선이 있는 디자인입니다.
+        -->
+        <div class="bg-slate-900 border-t-4 border-lime rounded-2xl p-6 md:p-8"
+          style="background-color: rgba(0,0,0,0.25);" role="region" aria-label="계산 결과 카드">
+          <!-- 월 상환액 -->
+          <p class="text-slate-500 text-sm mb-2">Your monthly repayments</p>
+          <p id="monthlyRepayment" class="text-lime font-bold text-5xl md:text-6xl tracking-tight mb-6"
+            aria-label="월 상환액">
+            £0.00
+          </p>
+
+          <!-- 구분선 -->
+          <hr class="border-slate-700 mb-6" />
+
+          <!-- 총 상환액 -->
+          <p class="text-slate-500 text-sm mb-2">Total you'll repay over the term</p>
+          <p id="totalRepayment" class="text-white font-bold text-2xl tracking-tight" aria-label="총 상환액">
+            £0.00
+          </p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- app.js 연결: defer 속성 덕분에 HTML을 모두 읽은 뒤 실행됩니다 -->
+  <!-- defer: "나중에 실행해줘" 라는 뜻으로, HTML 파싱을 막지 않아 페이지 로딩이 빠릅니다 -->
+  <script src="app.js" defer></script>
+
 </body>
+
 </html>
