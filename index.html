@@ -18,13 +18,13 @@
   <style>
     /* 결과 섹션(오른쪽 패널)의 모서리를 화면 크기에 따라 다르게 설정합니다. */
 
-    /* 모바일 기본: 화면을 꽉 채우기 위해 모서리를 직각(0)으로 설정합니다 */
+    /* 모바일 및 태블릿 기본: 화면을 꽉 채우기 위해 모서리를 직각(0)으로 설정합니다 */
     #resultsSection {
       border-radius: 0;
     }
 
-    /* 데스크탑(768px 이상): 왼쪽 하단만 80px로 크게 둥글게, 나머지는 필요한 만큼 조절합니다 */
-    @media (min-width: 768px) {
+    /* 데스크탑(1024px 이상): 왼쪽 하단만 80px로 크게 둥글게, 나머지는 필요한 만큼 조절합니다 */
+    @media (min-width: 1024px) {
       #resultsSection {
         border-radius: 0 1.5rem 1.5rem 5rem;
         /* 상단-좌: 0, 상단-우: 1.5rem(24px), 하단-우: 1.5rem(24px), 하단-좌: 5rem(80px) */
@@ -76,7 +76,7 @@
 
 <!-- body: Spacing 300(24px)과 0을 활용한 반응형 여백 설정 -->
 
-<body class="min-h-screen bg-slate-100 flex items-center justify-center font-sans p-0 md:p-spacing-300">
+<body class="min-h-screen bg-slate-100 flex items-center justify-center font-sans p-0 lg:p-spacing-300">
 
   <!-- 
     메인 컨테이너: 앱의 전체 구성을 담는 바구니입니다.
@@ -84,14 +84,17 @@
     - 데스크탑: 큼직하고 둥글게 만들어(md:rounded-3xl) 부드러운 느낌을 줍니다
   -->
   <main
-    class="w-full max-w-4xl bg-white rounded-none md:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-lg"
+    /* md:max-w-[688px]: 태블릿 화면에서 박스가 너무 옆으로 퍼지지 않게 최대 너비를 688px로 제한합니다 */
+    /* lg:max-w-4xl: 데스크탑 화면에서는 다시 넓게(896px) 보이도록 설정합니다 */
+    /* md:shadow-[0_32px_64px_0_rgba(19,48,65,0.1)]: 태블릿 화면에서 깊이감 있는 커스텀 그림자를 적용했습니다 */
+    class="w-full md:max-w-[688px] lg:max-w-4xl bg-white rounded-none md:rounded-3xl overflow-hidden flex flex-col lg:flex-row md:shadow-[0_32px_64px_0_rgba(19,48,65,0.1)]"
     role="main" aria-label="모기지 상환 계산기">
 
-    <!-- 왼쪽 입력 폼: 가이드에 따른 여백 매핑 (py-spacing-400, px-spacing-300, md:p-spacing-500) -->
+    <!-- 왼쪽 입력 폼: 태블릿 이상(md)부터는 40px(spacing-500)의 넉넉한 여백을 적용합니다 -->
     <section class="flex-1 py-spacing-400 px-spacing-300 md:p-spacing-500" aria-label="모기지 정보 입력 폼">
 
-      <!-- 제목 줄: Spacing 300(24px) 하단 여백과 Text Preset 2/5 적용 -->
-      <div class="flex flex-col items-start md:flex-row md:items-center justify-between mb-spacing-300 gap-2">
+      <!-- 제목 줄: 태블릿 이상(md)부터는 하단 여백을 40px(spacing-500)로 넉넉하게 설정합니다 -->
+      <div class="flex flex-col items-start md:flex-row md:items-center justify-between mb-spacing-300 md:mb-spacing-500 gap-2">
         <!-- 메인 제목 (Preset 2) -->
         <h1 class="text-preset2 text-slate-900">
           Mortgage Calculator
@@ -194,8 +197,8 @@
           </div>
         </div>
 
-        <!-- 4. 모기지 유형 (Spacing 300 + Preset 4 적용) -->
-        <div /* mb-spacing-300: 하단 여백을 기존 32px에서 요청하신 24px로 줄여 버튼과의 간격을 조절합니다 */ class="mb-spacing-300">
+        <!-- 4. 모기지 유형: 태블릿 이상(md)부터는 하단 여백을 40px(spacing-500)로 넉넉하게 설정합니다 -->
+        <div class="mb-spacing-300 md:mb-spacing-500">
           <p /* text-preset4: 이전의 작은 글씨(preset5)가 아닌, 다른 라벨들과 똑같은 16px 크기를 적용합니다 */ /* font-medium text-slate-700: 중간
             두께와 차분한 회색으로 제목을 표시합니다 */ class="text-preset4 font-medium text-slate-700 mb-spacing-150">
             Mortgage Type
@@ -251,7 +254,8 @@
         <button type="submit" /* type="submit" : 이 버튼을 누르면 폼에 입력된 데이터들을 가지고 계산을 시작하게 됩니다 */ /* gap-spacing-150: 아이콘과 글자
           사이에 12px만큼의 간격을 줍니다 */ /* bg-lime hover:bg-lime-dark: 기본은 라임색이고, 마우스를 올리면 조금 더 진한 라임색으로 변합니다 */ /*
           text-preset3: 요청하신 대로 글자 크기를 18px(Preset 3)로 키워 버튼을 강조했습니다 */ /* rounded-full: 버튼의 양 끝을 아주 둥글게(알약 모양) 만듭니다 */
-          class="w-full flex items-center justify-center gap-spacing-150 bg-lime hover:bg-lime-dark text-slate-900 font-bold text-preset3 py-spacing-200 px-spacing-500 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-lime focus:ring-offset-2"
+          /* md:w-[314px]: 태블릿 이상(md)부터는 버튼이 너무 옆으로 길어지지 않게 314px로 고집 너비를 설정합니다 */
+          class="w-full md:w-[314px] flex items-center justify-center gap-spacing-150 bg-lime hover:bg-lime-dark text-slate-900 font-bold text-preset3 py-spacing-200 px-spacing-500 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-lime focus:ring-offset-2"
           aria-label="모기지 상환액 계산하기">
           <img /* src: 계산기 모양의 아이콘 이미지를 불러옵니다 */ /* w-6 h-6: 요청하신 대로 아이콘 크기를 24x24px로 키워 시인성을 높였습니다 */ /*
             aria-hidden="true" : 아이콘은 디자인용(장식용)이므로 스크린 리더가 읽지 않게 숨깁니다 */ src="assets/images/icon-calculator.svg" alt=""
@@ -261,10 +265,9 @@
       </form>
     </section>
 
-    <!-- 결과 섹션: 요청하신 대로 상하 32px(spacing-400), 좌우 24px(spacing-300) 여백을 적용합니다 -->
-    <section /* resultsSection: 계산 결과가 표시되는 우측 남색 영역입니다 */ /* py-spacing-400: 상하 안쪽 여백을 32px로 설정하여 위아래 공간을 확보합니다 */ /*
-      px-spacing-300: 좌우 안쪽 여백을 24px로 설정하여 텍스트가 양 끝에 붙지 않게 합니다 */
-      class="flex-1 bg-slate-900 flex flex-col items-center justify-center py-spacing-400 px-spacing-300"
+    <section /* resultsSection: 계산 결과가 표시되는 우측 남색 영역입니다 */ /* py-spacing-400: 모바일 상하 여백 32px */ /*
+      px-spacing-300: 모바일 좌우 여백 24px */ /* md:p-spacing-500: 태블릿 이상(md)부터는 모든 방향에 40px의 넉넉한 여백을 적용합니다 */
+      class="flex-1 bg-slate-900 flex flex-col items-center justify-center py-spacing-400 px-spacing-300 md:p-spacing-500"
       id="resultsSection" aria-label="계산 결과 영역" aria-live="polite">
 
       <!-- 대기 화면: 계산 전 보여주는 안내 영역입니다. 요청하신 대로 안쪽 여백을 0으로 설정했습니다. -->
@@ -276,8 +279,8 @@
           Results shown here
         </h2>
         <p /* text-slate-300: 어두운 배경색에서도 글자가 잘 보이도록 밝은 회색(Slate 300)을 적용했습니다 */ /* text-preset4: 요청하신 대로 글자 크기를
-          16px(Preset 4)로 키워 가독성을 높였습니다 */ /* max-w-xs: 줄 바꿈이 자연스럽게 일어나도록 최대 너비를 제한합니다 */
-          class="text-slate-300 text-preset4 max-w-xs">
+          16px(Preset 4)로 키워 가독성을 높였습니다 */ /* md:max-w-[608px]: 태블릿 화면에서 줄바꿈이 자연스럽도록 최대 너비를 608px로 제한합니다 */
+          class="text-slate-300 text-preset4 max-w-xs md:max-w-[608px]">
           Complete the form and click "calculate repayments" to see what
           your monthly repayments would be.
         </p>
@@ -297,7 +300,8 @@
           /* text-slate-500: 차분한 회색으로 설명 문구를 표시합니다 */
           /* text-preset4: 요청하신 대로 16px(Preset 4) 크기를 적용하여 설명 내용을 더 잘 보이게 했습니다 */
           /* mb-spacing-300: 하단 결과 카드와의 간격을 요청하신 24px로 사뿐하게 조정했습니다 */
-          class="text-slate-500 text-preset4 mb-spacing-300">
+          /* md:max-w-[608px]: 태블릿 화면에서 텍스트가 너무 퍼지지 않게 608px로 너비를 제한합니다 */
+          class="text-slate-500 text-preset4 mb-spacing-300 md:max-w-[608px]">
           Your results are shown below based on the information you provided.
           To adjust the results, edit the form and click "calculate repayments" again.
         </p>
@@ -309,20 +313,22 @@
           /* rounded-[8px]: 모서리를 8px로 깎아 단정한 느낌을 줍니다 */
           /* py-spacing-300: 상하 여백을 24px로 설정합니다 */
           /* px-spacing-200: 좌우 여백을 16px로 설정하여 가독성을 높입니다 */
-          class="bg-slate-900 border-t-4 border-lime rounded-[8px] py-spacing-300 px-spacing-200"
+          /* md:p-spacing-400: 태블릿 이상(md)부터는 안쪽 여백을 32px로 넉넉하게 적용합니다 */
+          class="bg-slate-900 border-t-4 border-lime rounded-[8px] py-spacing-300 px-spacing-200 md:p-spacing-400"
           style="background-color: rgba(0,0,0,0.25);" role="region" aria-label="계산 결과 카드">
           <!-- 월 상환액 (Preset 4와 Slate 300 색상 적용) -->
           <p class="text-slate-300 text-preset4 mb-spacing-100">Your monthly repayments</p>
           <p id="monthlyRepayment" 
-            /* text-[40px]: 모바일에서 금액이 너무 크지 않도록 40px로 조절했습니다 */
-            /* md:text-preset1: 데스크탑(큰 화면)에서는 기존처럼 시원하게 56px(Preset 1)로 보여줍니다 */
-            /* mb-spacing-200: 하단 여백은 16px를 유지합니다 */
-            class="text-lime text-[40px] md:text-preset1 font-bold mb-spacing-200" aria-label="월 상환액">
+            /* text-[40px]: 모바일에서는 40px로 적절한 크기를 유지합니다 */
+            /* md:text-preset1: 태블릿 이상(md)의 큰 화면에서는 시원하게 56px(Preset 1)로 대폭 키워서 보여줍니다 */
+            /* mb-spacing-200: 모바일에서는 하단 여백을 16px로 유지합니다 */
+            /* md:mb-spacing-500: 태블릿 이상(md)부터는 하단 여백을 40px로 넉넉하게 설정합니다 */
+            class="text-lime text-[40px] md:text-preset1 font-bold mb-spacing-200 md:mb-spacing-500" aria-label="월 상환액">
             £0.00
           </p>
 
-          <!-- 구분선 (Slate 300 색상의 25% 투명도 적용 및 하단 여백 16px 설정) -->
-          <hr class="border-slate-300/25 mb-spacing-200" />
+          <!-- 구분선 (Slate 300 25% 투명도 적용, 모바일 여백 16px, 태블릿 이상 32px) -->
+          <hr class="border-slate-300/25 mb-spacing-200 md:mb-spacing-400" />
 
           <!-- 총 상환액 (Preset 4와 Slate 300 색상 적용) -->
           <p class="text-slate-300 text-preset4 mb-spacing-100">Total you'll repay over the term</p>
