@@ -103,8 +103,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // e.preventDefault(): 폼 제출 시 페이지가 새로고침되는 기본 동작을 막습니다
     e.preventDefault();
 
-    // 입력값을 읽어옵니다
-    const amount = parseFloat(amountInput.value); // 문자열 → 소수점 숫자로 변환
+    // 입력값을 읽어옵니다 (금액은 콤마를 제거하고 숫자로 바꿉니다)
+    /* replace(/,/g, ""): 글자 사이사이에 있는 모든 콤마(,)를 지워서 순수한 숫자로 만듭니다 */
+    const amount = parseFloat(amountInput.value.replace(/,/g, "")); 
     const term   = parseInt(termInput.value, 10); // 문자열 → 정수로 변환 (10진법)
     const rate   = parseFloat(rateInput.value);   // 문자열 → 소수점 숫자로 변환
 
@@ -114,8 +115,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // ── 유효성 검사: 빈칸이나 잘못된 값이 있으면 에러를 표시합니다 ──
     let hasError = false; // 에러가 하나라도 있는지 추적하는 변수
 
-    // 금액 검사: 비어있거나 0 이하면 에러
-    if (!amountInput.value || isNaN(amount) || amount <= 0) {
+    // 금액 검사: 콤마를 뺀 순수 값이 비어있거나 0 이하면 에러
+    const amountRaw = amountInput.value.replace(/,/g, "");
+    if (!amountRaw || isNaN(amount) || amount <= 0) {
       showError(amountWrapper, amountError);
       hasError = true;
     } else {
@@ -231,7 +233,24 @@ document.addEventListener("DOMContentLoaded", function () {
   //    (입력 중에도 빨간 테두리가 계속 보이면 불편하기 때문입니다)
   // ─────────────────────────────────────────
 
-  amountInput.addEventListener("input", function () { clearError(amountWrapper, amountError); });
+  // 실시간 콤마 포맷팅: 숫자를 입력할 때마다 천 단위 쉼표를 찍어줍니다
+  amountInput.addEventListener("input", function (e) {
+    // 1. 에러 스타일이 있다면 먼저 지워줍니다
+    clearError(amountWrapper, amountError);
+
+    // 2. 현재 입력된 값에서 숫자 이외의 문자(콤마 등)를 모두 제거합니다
+    let value = e.target.value.replace(/[^0-9.]/g, "");
+    
+    // 3. 값이 비어있지 않다면 포맷팅을 진행합니다
+    if (value !== "") {
+      const parts = value.split(".");
+      // 정수 부분에만 콤마를 찍습니다
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      // 소수점이 있다면 다시 합쳐줍니다
+      e.target.value = parts.join(".");
+    }
+  });
+
   termInput.addEventListener("input",   function () { clearError(termWrapper,   termError);   });
   rateInput.addEventListener("input",   function () { clearError(rateWrapper,   rateError);   });
 
