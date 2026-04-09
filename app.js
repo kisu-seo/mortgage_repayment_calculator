@@ -1,284 +1,346 @@
-// =====================================================
-// app.js — 모기지 상환 계산기 동작 로직
-// HTML이 모두 로드된 뒤에 실행되도록 DOMContentLoaded 이벤트로 감쌉니다.
-// (DOMContentLoaded: 브라우저가 HTML을 다 읽은 직후 발생하는 신호입니다)
-// =====================================================
-document.addEventListener("DOMContentLoaded", function () {
-
-  // ─────────────────────────────────────────
-  // 1. HTML 요소들을 변수에 저장합니다
-  //    (나중에 쉽게 꺼내 쓰기 위해 미리 담아둡니다)
-  // ─────────────────────────────────────────
-
-  const form        = document.getElementById("mortgageForm");     // 폼 전체
-  const clearAllBtn = document.getElementById("clearAllBtn");      // Clear All 버튼
-  const emptyState  = document.getElementById("emptyState");       // 대기 화면 (일러스트)
-  const resultsState = document.getElementById("resultsState");    // 결과 화면 (금액 카드)
-  const monthlyEl   = document.getElementById("monthlyRepayment"); // 월 상환액 표시 요소
-  const totalEl     = document.getElementById("totalRepayment");   // 총 상환액 표시 요소
-
-  // 입력 요소들
-  const amountInput = document.getElementById("mortgageAmount");   // 모기지 금액 입력창
-  const termInput   = document.getElementById("mortgageTerm");     // 모기지 기간 입력창
-  const rateInput   = document.getElementById("interestRate");     // 이자율 입력창
-
-  // 입력 래퍼(테두리를 감싸는 div)들
-  const amountWrapper = document.getElementById("amountWrapper");  // 금액 입력 래퍼
-  const termWrapper   = document.getElementById("termWrapper");    // 기간 입력 래퍼
-  const rateWrapper   = document.getElementById("rateWrapper");    // 이자율 입력 래퍼
-
-  // 오류 메시지 요소들
-  const amountError = document.getElementById("amountError");      // 금액 오류 메시지
-  const termError   = document.getElementById("termError");        // 기간 오류 메시지
-  const rateError   = document.getElementById("rateError");        // 이자율 오류 메시지
-  const typeError   = document.getElementById("typeError");        // 유형 오류 메시지
+// ================================================================
+// app.js — Mortgage Repayment Calculator
+//
+// 구조 개요:
+//   [1] DOM 초기화     — querySelector 호출을 한 곳에 집약
+//   [2] 비즈니스 로직  — DOM에 의존하지 않는 순수 계산 함수
+//   [3] UI 유틸리티   — 에러 스타일 토글 · 통화 포맷팅
+//   [4] 유효성 검사    — 에러 판단 후 [3]을 호출
+//   [5] 화면 업데이트  — 계산 결과를 DOM에 반영
+//   [6] 이벤트 바인딩  — 모든 사용자 인터랙션 등록
+//   [7] 앱 초기화      — DOMContentLoaded 시 [1] → [6] 실행
+// ================================================================
 
 
-  // ─────────────────────────────────────────
-  // 2. 유틸리티 함수들 (도우미 함수)
-  // ─────────────────────────────────────────
+// ================================================================
+// [1] DOM 초기화
+// ================================================================
 
-  /**
-   * 숫자를 천 단위 쉼표가 찍힌 파운드 통화 형식으로 변환합니다.
-   * 예: 1797.74 → "£1,797.74"
-   * @param {number} value - 변환할 숫자
-   * @returns {string} - 포맷된 문자열
-   */
-  function formatCurrency(value) {
-    // toLocaleString: 숫자를 지역 형식에 맞게 변환해주는 내장 함수입니다
-    return "£" + value.toLocaleString("en-GB", {
-      minimumFractionDigits: 2, // 소수점 최소 2자리 (예: .70이 .7로 줄어들지 않게)
-      maximumFractionDigits: 2, // 소수점 최대 2자리
-    });
-  }
-
-  /**
-   * 입력 래퍼에 에러 스타일(빨간 테두리)을 적용하고 오류 메시지를 보여줍니다.
-   * @param {HTMLElement} wrapper  - 테두리를 감싸는 div 요소
-   * @param {HTMLElement} errorEl - 오류 메시지 p 태그
-   */
-  function showError(wrapper, errorEl) {
-    // 기존 회색 테두리 클래스를 제거하고 빨간 테두리 클래스를 추가합니다
-    wrapper.classList.remove("border-slate-300", "focus-within:border-lime", "focus-within:ring-lime");
-    wrapper.classList.add("border-err-red", "ring-1", "ring-err-red");
-
-    // 뱃지(£, years, %)의 배경색도 빨간색으로 바꿉니다
-    const badges = wrapper.querySelectorAll(".badge-left, .badge-right");
-    badges.forEach(function (badge) {
-      badge.classList.remove("bg-slate-100", "text-slate-700");
-      badge.classList.add("bg-err-red", "text-white");
-    });
-
-    // 오류 메시지를 숨김 상태에서 보이게 만듭니다
-    errorEl.classList.remove("hidden");
-  }
-
-  /**
-   * 입력 래퍼의 에러 스타일을 제거하고 오류 메시지를 숨깁니다.
-   * @param {HTMLElement} wrapper  - 테두리를 감싸는 div 요소
-   * @param {HTMLElement} errorEl - 오류 메시지 p 태그
-   */
-  function clearError(wrapper, errorEl) {
-    // 빨간 테두리 클래스를 제거하고 원래 회색 테두리로 되돌립니다
-    wrapper.classList.remove("border-err-red", "ring-1", "ring-err-red");
-    wrapper.classList.add("border-slate-300", "focus-within:border-lime", "focus-within:ring-lime");
-
-    // 뱃지 색상도 원래 슬레이트 색으로 되돌립니다
-    const badges = wrapper.querySelectorAll(".badge-left, .badge-right");
-    badges.forEach(function (badge) {
-      badge.classList.remove("bg-err-red", "text-white");
-      badge.classList.add("bg-slate-100", "text-slate-700");
-    });
-
-    // 오류 메시지를 다시 숨깁니다
-    errorEl.classList.add("hidden");
-  }
+/**
+ * 앱 전체에서 사용할 DOM 요소를 한 곳에서 수집해 객체로 반환합니다.
+ * querySelector 호출을 분산하지 않고 여기에 집약시켜,
+ * HTML id가 변경될 때 수정 지점을 단 한 곳으로 제한합니다.
+ *
+ * @returns {{ form, clearAllBtn, emptyState, resultsState, monthlyEl, totalEl,
+ *             inputs: {amount, term, rate},
+ *             wrappers: {amount, term, rate},
+ *             errors: {amount, term, rate, type} }}
+ */
+function initElements() {
+  return {
+    form:         document.getElementById("mortgageForm"),
+    clearAllBtn:  document.getElementById("clearAllBtn"),
+    emptyState:   document.getElementById("emptyState"),
+    resultsState: document.getElementById("resultsState"),
+    monthlyEl:    document.getElementById("monthlyRepayment"),
+    totalEl:      document.getElementById("totalRepayment"),
+    inputs: {
+      amount: document.getElementById("mortgageAmount"),
+      term:   document.getElementById("mortgageTerm"),
+      rate:   document.getElementById("interestRate"),
+    },
+    wrappers: {
+      amount: document.getElementById("amountWrapper"),
+      term:   document.getElementById("termWrapper"),
+      rate:   document.getElementById("rateWrapper"),
+    },
+    errors: {
+      amount: document.getElementById("amountError"),
+      term:   document.getElementById("termError"),
+      rate:   document.getElementById("rateError"),
+      type:   document.getElementById("typeError"),
+    },
+  };
+}
 
 
-  // ─────────────────────────────────────────
-  // 3. 폼 제출(Calculate Repayments 클릭) 이벤트
-  // ─────────────────────────────────────────
+// ================================================================
+// [2] 비즈니스 로직 (Pure Functions)
+//     DOM·UI에 의존하지 않으므로 단독 테스트와 재사용이 가능합니다.
+// ================================================================
 
-  form.addEventListener("submit", function (e) {
-    // e.preventDefault(): 폼 제출 시 페이지가 새로고침되는 기본 동작을 막습니다
-    e.preventDefault();
+/**
+ * 원리금 균등상환(Repayment) 방식의 월 납입액을 계산합니다.
+ *
+ * 공식: M = P × [r(1+r)^n] / [(1+r)^n - 1]
+ *   - P: 원금
+ *   - r: 월 이자율 (연 이자율 ÷ 12 ÷ 100)
+ *   - n: 총 납입 횟수 (기간 × 12)
+ *   - factor = (1+r)^n : 이자 복리 성장 배수. 이 값이 분자·분모를 결정합니다.
+ *
+ * @param {number} principal     - 원금
+ * @param {number} monthlyRate   - 월 이자율 (소수, 예: 연 5.25% → 0.004375)
+ * @param {number} totalPayments - 총 납입 횟수
+ * @returns {number} 월 납입액
+ */
+function calcRepayment(principal, monthlyRate, totalPayments) {
+  // 이자율 0%이면 factor 계산에서 분모가 0이 돼 NaN이 발생하므로 별도 처리합니다.
+  if (monthlyRate === 0) return principal / totalPayments;
 
-    // 입력값을 읽어옵니다 (금액은 콤마를 제거하고 숫자로 바꿉니다)
-    /* replace(/,/g, ""): 글자 사이사이에 있는 모든 콤마(,)를 지워서 순수한 숫자로 만듭니다 */
-    const amount = parseFloat(amountInput.value.replace(/,/g, "")); 
-    const term   = parseInt(termInput.value, 10); // 문자열 → 정수로 변환 (10진법)
-    const rate   = parseFloat(rateInput.value);   // 문자열 → 소수점 숫자로 변환
+  const factor = Math.pow(1 + monthlyRate, totalPayments); // 복리 성장 배수
+  return principal * (monthlyRate * factor) / (factor - 1);
+}
 
-    // 선택된 라디오 버튼의 값을 가져옵니다
-    const selectedType = document.querySelector('input[name="mortgageType"]:checked');
+/**
+ * 이자만 상환(Interest Only) 방식의 월 납입액을 계산합니다.
+ * 원금은 그대로 두고 이자만 납부하므로, 매달 납입액이 일정합니다.
+ * 원금 상환은 대출 만기 시 일시 상환하는 별도 계약으로 처리됩니다.
+ *
+ * @param {number} principal   - 원금
+ * @param {number} monthlyRate - 월 이자율 (소수)
+ * @returns {number} 월 납입액
+ */
+function calcInterestOnly(principal, monthlyRate) {
+  return principal * monthlyRate;
+}
 
-    // ── 유효성 검사: 빈칸이나 잘못된 값이 있으면 에러를 표시합니다 ──
-    let hasError = false; // 에러가 하나라도 있는지 추적하는 변수
+/**
+ * 상환 유형에 따라 적절한 계산 함수로 위임하고,
+ * 월 납입액(monthly)과 총 납입액(total)을 반환합니다.
+ *
+ * @param {number} amount - 모기지 원금
+ * @param {number} term   - 상환 기간 (년)
+ * @param {number} rate   - 연 이자율 (%)
+ * @param {string} type   - "repayment" | "interest-only"
+ * @returns {{ monthly: number, total: number }}
+ */
+function calculateMortgage(amount, term, rate, type) {
+  const monthlyRate   = rate / 100 / 12; // 연 이자율(%) → 월 이자율(소수)
+  const totalPayments = term * 12;
 
-    // 금액 검사: 콤마를 뺀 순수 값이 비어있거나 0 이하면 에러
-    const amountRaw = amountInput.value.replace(/,/g, "");
-    if (!amountRaw || isNaN(amount) || amount <= 0) {
-      showError(amountWrapper, amountError);
-      hasError = true;
-    } else {
-      clearError(amountWrapper, amountError);
-    }
+  const monthly = type === "repayment"
+    ? calcRepayment(amount, monthlyRate, totalPayments)
+    : calcInterestOnly(amount, monthlyRate);
 
-    // 기간 검사: 비어있거나 1년 미만이거나 40년 초과면 에러
-    if (!termInput.value || isNaN(term) || term < 1 || term > 40) {
-      showError(termWrapper, termError);
-      hasError = true;
-    } else {
-      clearError(termWrapper, termError);
-    }
+  return { monthly, total: monthly * totalPayments };
+}
 
-    // 이자율 검사: 비어있거나 0 미만이면 에러
-    if (!rateInput.value || isNaN(rate) || rate < 0) {
-      showError(rateWrapper, rateError);
-      hasError = true;
-    } else {
-      clearError(rateWrapper, rateError);
-    }
 
-    // 모기지 유형 검사: 라디오 버튼이 선택되지 않으면 에러
-    if (!selectedType) {
-      typeError.classList.remove("hidden"); // 오류 메시지를 보여줍니다
-      hasError = true;
-    } else {
-      typeError.classList.add("hidden");    // 오류 메시지를 숨깁니다
-    }
+// ================================================================
+// [3] UI 유틸리티
+// ================================================================
 
-    // 에러가 하나라도 있으면 계산을 중단합니다
-    if (hasError) return;
+/**
+ * 숫자를 파운드 통화 문자열로 변환합니다. (예: 1797.74 → "£1,797.74")
+ * en-GB 로케일을 명시해 천 단위 구분자와 소수점 기호가
+ * 사용자의 브라우저 언어 설정에 관계없이 항상 동일하게 출력되도록 합니다.
+ *
+ * @param {number} value
+ * @returns {string}
+ */
+function formatCurrency(value) {
+  return "£" + value.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
-    // ── 계산 로직 ──
+/**
+ * 입력 래퍼에 에러 스타일을 적용하고 오류 메시지를 노출합니다.
+ * 테두리뿐 아니라 badge(£ / years / %)의 배경색도 함께 바꾸어
+ * 에러 상태임을 색상으로 통일감 있게 전달합니다.
+ *
+ * @param {HTMLElement} wrapper  - 입력창과 badge를 감싸는 div
+ * @param {HTMLElement} errorEl  - 오류 메시지 p 태그
+ */
+function showError(wrapper, errorEl) {
+  wrapper.classList.remove("border-slate-300", "focus-within:border-lime", "focus-within:ring-lime");
+  wrapper.classList.add("border-err-red", "ring-1", "ring-err-red");
 
-    // 월 이자율: 연 이자율을 12로 나눠서 월 단위로 변환합니다
-    // 예: 연 5.25% → 월 0.4375% → 소수로는 0.004375
-    const monthlyRate  = rate / 100 / 12;
-
-    // 총 납입 횟수: 기간(년) × 12개월
-    const totalPayments = term * 12;
-
-    let monthly = 0; // 월 납입액을 담을 변수
-    let total   = 0; // 총 납입액을 담을 변수
-
-    if (selectedType.value === "repayment") {
-      // ── 원리금 균등상환 방식 ──
-      // 공식: M = P × [r(1+r)^n] / [(1+r)^n - 1]
-      // P = 원금, r = 월 이자율, n = 총 납입 횟수
-
-      if (monthlyRate === 0) {
-        // 이자율이 0%인 특수한 경우: 단순히 원금 ÷ 납입 횟수
-        monthly = amount / totalPayments;
-      } else {
-        // Math.pow(밑, 지수): 거듭제곱 계산 함수입니다
-        // 예: Math.pow(1.004375, 300) = 1.004375의 300제곱
-        const factor = Math.pow(1 + monthlyRate, totalPayments);
-        monthly = amount * (monthlyRate * factor) / (factor - 1);
-      }
-
-      // 총 납입액: 월 납입액 × 총 납입 횟수
-      total = monthly * totalPayments;
-
-    } else {
-      // ── 이자만 상환 방식 ──
-      // 매달 이자만 내는 방식: 원금 × 월 이자율
-      monthly = amount * monthlyRate;
-
-      // 총 납입액: 월 이자 × 납입 횟수 (원금은 별도로 만기에 상환)
-      total = monthly * totalPayments;
-    }
-
-    // ── 화면에 결과를 표시합니다 ──
-
-    // 계산된 금액을 쉼표 포맷으로 변환해서 화면에 넣습니다
-    monthlyEl.textContent = formatCurrency(monthly);
-    totalEl.textContent   = formatCurrency(total);
-
-    // 대기 화면(일러스트)을 숨기고 결과 화면을 보여줍니다 (DOM 토글)
-    emptyState.classList.add("hidden");
-    resultsState.classList.remove("hidden");
+  wrapper.querySelectorAll(".badge-left, .badge-right").forEach(badge => {
+    badge.classList.remove("bg-slate-100", "text-slate-700");
+    badge.classList.add("bg-err-red", "text-white");
   });
 
+  errorEl.classList.remove("hidden");
+}
 
-  // ─────────────────────────────────────────
-  // 4. Clear All 버튼: 모든 입력값과 결과를 초기화합니다
-  // ─────────────────────────────────────────
+/**
+ * showError()의 역연산. 에러 스타일을 제거하고 오류 메시지를 숨깁니다.
+ * 사용자가 입력을 시작하는 즉시 호출해 불필요한 에러 표시를 제거합니다.
+ *
+ * @param {HTMLElement} wrapper
+ * @param {HTMLElement} errorEl
+ */
+function clearError(wrapper, errorEl) {
+  wrapper.classList.remove("border-err-red", "ring-1", "ring-err-red");
+  wrapper.classList.add("border-slate-300", "focus-within:border-lime", "focus-within:ring-lime");
 
-  clearAllBtn.addEventListener("click", function () {
-    // 폼의 모든 입력값을 한 번에 비워줍니다
-    form.reset();
+  wrapper.querySelectorAll(".badge-left, .badge-right").forEach(badge => {
+    badge.classList.remove("bg-err-red", "text-white");
+    badge.classList.add("bg-slate-100", "text-slate-700");
+  });
 
-    // 모든 에러 표시를 제거합니다
-    clearError(amountWrapper, amountError);
-    clearError(termWrapper,   termError);
-    clearError(rateWrapper,   rateError);
-    typeError.classList.add("hidden");
+  errorEl.classList.add("hidden");
+}
 
-    // 라디오 버튼 커스텀 내부 원을 모두 숨깁니다
-    document.querySelectorAll('input[name="mortgageType"]').forEach(function (r) {
+
+// ================================================================
+// [4] 유효성 검사
+// ================================================================
+
+/**
+ * 폼 입력값을 검사하고, 통과하면 파싱된 값을 반환합니다.
+ *
+ * fieldChecks 배열 패턴을 사용해 각 필드의 조건·래퍼·에러 요소를 묶어 처리합니다.
+ * if-else 체인 대신 배열을 순회하므로, 필드를 추가·제거할 때 조건 하나만 수정하면 됩니다.
+ * 모든 필드를 순회한 후에 hasError를 평가하기 때문에, 하나가 실패해도
+ * 나머지 필드의 에러 상태도 빠짐없이 갱신됩니다.
+ *
+ * @param {object} inputs   - { amount, term, rate } 입력 요소
+ * @param {object} wrappers - { amount, term, rate } 래퍼 요소
+ * @param {object} errors   - { amount, term, rate, type } 에러 메시지 요소
+ * @returns {{ valid: false } | { valid: true, amount: number, term: number, rate: number, type: string }}
+ */
+function validateForm(inputs, wrappers, errors) {
+  // 금액 필드는 type="text"이므로 콤마를 제거한 뒤 숫자로 변환합니다.
+  const amountRaw    = inputs.amount.value.replace(/,/g, "");
+  const amount       = parseFloat(amountRaw);
+  const term         = parseInt(inputs.term.value, 10);
+  const rate         = parseFloat(inputs.rate.value);
+  const selectedType = document.querySelector('input[name="mortgageType"]:checked');
+
+  const fieldChecks = [
+    { fail: !amountRaw || isNaN(amount) || amount <= 0,                    wrapper: wrappers.amount, error: errors.amount },
+    { fail: !inputs.term.value || isNaN(term) || term < 1 || term > 40,   wrapper: wrappers.term,   error: errors.term   },
+    { fail: !inputs.rate.value || isNaN(rate) || rate < 0,                 wrapper: wrappers.rate,   error: errors.rate   },
+  ];
+
+  let hasError = false;
+
+  fieldChecks.forEach(({ fail, wrapper, error }) => {
+    if (fail) { showError(wrapper, error); hasError = true; }
+    else      { clearError(wrapper, error); }
+  });
+
+  // 라디오 버튼은 wrapper가 없으므로 별도로 처리합니다.
+  if (!selectedType) {
+    errors.type.classList.remove("hidden");
+    hasError = true;
+  } else {
+    errors.type.classList.add("hidden");
+  }
+
+  if (hasError) return { valid: false };
+  return { valid: true, amount, term, rate, type: selectedType.value };
+}
+
+
+// ================================================================
+// [5] 화면 업데이트
+// ================================================================
+
+/**
+ * 계산 결과를 DOM에 반영하고 Empty ↔ Results 상태를 전환합니다.
+ * hidden 클래스 토글만으로 상태를 전환해 레이아웃 재계산(reflow) 비용을 최소화합니다.
+ *
+ * @param {{ monthly: number, total: number }} result
+ * @param {HTMLElement} monthlyEl
+ * @param {HTMLElement} totalEl
+ * @param {HTMLElement} emptyState
+ * @param {HTMLElement} resultsState
+ */
+function updateUI(result, monthlyEl, totalEl, emptyState, resultsState) {
+  monthlyEl.textContent = formatCurrency(result.monthly);
+  totalEl.textContent   = formatCurrency(result.total);
+  emptyState.classList.add("hidden");
+  resultsState.classList.remove("hidden");
+}
+
+
+// ================================================================
+// [6] 이벤트 바인딩
+// ================================================================
+
+/**
+ * 모든 사용자 인터랙션 이벤트를 등록합니다.
+ * 이벤트 리스너는 initElements()가 반환한 el 객체를 통해서만 DOM에 접근합니다.
+ *
+ * @param {ReturnType<typeof initElements>} el
+ */
+function bindEvents(el) {
+  const { form, clearAllBtn, emptyState, resultsState, monthlyEl, totalEl, inputs, wrappers, errors } = el;
+
+  // ── 폼 제출: 검사 → 계산 → 화면 반영 ──────────────────────────
+  form.addEventListener("submit", (e) => {
+    e.preventDefault(); // 브라우저 기본 제출(페이지 이동)을 막습니다.
+    const validated = validateForm(inputs, wrappers, errors);
+    if (!validated.valid) return;
+
+    const result = calculateMortgage(validated.amount, validated.term, validated.rate, validated.type);
+    updateUI(result, monthlyEl, totalEl, emptyState, resultsState);
+  });
+
+  // ── Clear All: 폼·에러·라디오 점·결과 화면을 초기 상태로 되돌립니다 ──
+  clearAllBtn.addEventListener("click", () => {
+    form.reset(); // 브라우저 내장 reset은 입력값만 초기화합니다.
+                  // Tailwind 에러 클래스는 JS가 직접 제거해야 합니다.
+    clearError(wrappers.amount, errors.amount);
+    clearError(wrappers.term,   errors.term);
+    clearError(wrappers.rate,   errors.rate);
+    errors.type.classList.add("hidden");
+
+    document.querySelectorAll('input[name="mortgageType"]').forEach(r => {
       const dot = r.nextElementSibling.querySelector("span");
       if (dot) dot.classList.add("hidden");
     });
 
-    // 결과 화면을 숨기고 대기 화면(일러스트)을 다시 보여줍니다
     resultsState.classList.add("hidden");
     emptyState.classList.remove("hidden");
   });
 
+  // ── 금액 입력: 실시간 천 단위 콤마 포맷팅 ───────────────────────
+  inputs.amount.addEventListener("input", (e) => {
+    clearError(wrappers.amount, errors.amount);
 
-  // ─────────────────────────────────────────
-  // 5. 실시간 에러 제거: 사용자가 입력을 시작하면 에러를 바로 없애줍니다
-  //    (입력 중에도 빨간 테두리가 계속 보이면 불편하기 때문입니다)
-  // ─────────────────────────────────────────
-
-  // 실시간 콤마 포맷팅: 숫자를 입력할 때마다 천 단위 쉼표를 찍어줍니다
-  amountInput.addEventListener("input", function (e) {
-    // 1. 에러 스타일이 있다면 먼저 지워줍니다
-    clearError(amountWrapper, amountError);
-
-    // 2. 현재 입력된 값에서 숫자 이외의 문자(콤마 등)를 모두 제거합니다
+    // /[^0-9.]/g — 숫자와 소수점 외 모든 문자(기존 콤마 포함)를 제거합니다.
+    // 소수점(.)을 허용하는 이유: 금액에 페니(소수점 이하 단위)가 포함될 수 있기 때문입니다.
     let value = e.target.value.replace(/[^0-9.]/g, "");
-    
-    // 3. 값이 비어있지 않다면 포맷팅을 진행합니다
     if (value !== "") {
       const parts = value.split(".");
-      // 정수 부분에만 콤마를 찍습니다
+      // /\B(?=(\d{3})+(?!\d))/g — 정수 부분에 천 단위 콤마를 삽입하는 lookahead 정규식입니다.
+      // \B: 단어 경계가 아닌 위치 / (?=(\d{3})+(?!\d)): 뒤에 숫자가 3의 배수 개 남은 위치
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      // 소수점이 있다면 다시 합쳐줍니다
       e.target.value = parts.join(".");
     }
   });
 
-  termInput.addEventListener("input",   function () { clearError(termWrapper,   termError);   });
-  rateInput.addEventListener("input",   function () { clearError(rateWrapper,   rateError);   });
+  // ── 기간·이자율 입력: 타이핑 시작 즉시 에러 해제 ────────────────
+  inputs.term.addEventListener("input", () => clearError(wrappers.term, errors.term));
+  inputs.rate.addEventListener("input", () => clearError(wrappers.rate, errors.rate));
 
-  // 라디오 버튼을 선택하면 유형 에러를 없애줍니다
-  document.querySelectorAll('input[name="mortgageType"]').forEach(function (radio) {
+  // ── 라디오 버튼: 유형 에러 해제 + 커스텀 내부 점(dot) 제어 ──────
+  //
+  // NOTE: CSS 한계 보완
+  // HTML에서 peer-checked는 직계 형제(sibling)에만 작용합니다.
+  // 내부 dot span은 radio의 조카(nephew) 위치에 있어 CSS만으로 제어할 수 없습니다.
+  // 따라서 change 이벤트에서 전체 초기화 후 선택된 항목만 dot을 표시합니다.
+  //
+  // NOTE: 화살표 함수 대신 function 키워드를 사용하는 이유
+  // this가 이벤트를 발생시킨 radio 요소를 가리켜야 하기 때문입니다.
+  // 화살표 함수는 this를 상위 스코프에서 상속하므로 여기서는 사용할 수 없습니다.
+  document.querySelectorAll('input[name="mortgageType"]').forEach(radio => {
     radio.addEventListener("change", function () {
-      typeError.classList.add("hidden");
-    });
-  });
+      errors.type.classList.add("hidden");
 
-
-  // ─────────────────────────────────────────
-  // 6. 라디오 버튼 커스텀 스타일: 선택 시 내부 채운 원을 표시합니다
-  //    (CSS의 peer-checked만으로 형제 span 안의 자식 span을 제어하는 데 한계가 있어 JS로 보완합니다)
-  // ─────────────────────────────────────────
-
-  document.querySelectorAll('input[name="mortgageType"]').forEach(function (radio) {
-    radio.addEventListener("change", function () {
-      // 모든 라디오의 내부 원(채운 원)을 먼저 전부 숨깁니다
-      document.querySelectorAll('input[name="mortgageType"]').forEach(function (r) {
-        const dot = r.nextElementSibling.querySelector("span"); // 내부 채운 원 요소
-        if (dot) dot.classList.add("hidden");                   // 숨깁니다
+      document.querySelectorAll('input[name="mortgageType"]').forEach(r => {
+        const dot = r.nextElementSibling.querySelector("span");
+        if (dot) dot.classList.add("hidden");
       });
-
-      // 현재 선택된 라디오의 내부 원만 다시 보여줍니다
       const selectedDot = this.nextElementSibling.querySelector("span");
       if (selectedDot) selectedDot.classList.remove("hidden");
     });
   });
+}
 
-}); // DOMContentLoaded 이벤트 종료
+
+// ================================================================
+// [7] 앱 초기화
+// ================================================================
+
+// DOMContentLoaded 이후에 실행되므로 app.js에 defer가 있어도 안전하게 동작합니다.
+// DOM 참조를 initElements()에서 한 번에 확보한 뒤 bindEvents()에 전달합니다.
+document.addEventListener("DOMContentLoaded", () => {
+  const el = initElements();
+  bindEvents(el);
+});

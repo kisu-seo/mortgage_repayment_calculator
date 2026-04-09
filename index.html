@@ -3,61 +3,59 @@
 
 <head>
   <meta charset="UTF-8" />
-  <!-- 모바일 화면에서도 글자가 잘 보이도록 뷰포트를 설정합니다 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mortgage Repayment Calculator</title>
 
-  <!-- Google Fonts에서 Plus Jakarta Sans 폰트를 불러옵니다 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind CSS CDN: 별도 CSS 파일 없이 유틸리티 클래스만으로 스타일을 적용합니다 -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!--
+    NOTE: Tailwind의 rounded-* 유틸리티는 네 모서리를 동일하게 처리합니다.
+    결과 패널의 왼쪽 하단만 독립적으로 80px(5rem)를 적용해야 하므로,
+    이 한 곳에 한해 예외적으로 <style>을 사용합니다.
+    반응형 분기점은 Tailwind lg: breakpoint(1024px)와 맞춥니다.
+  -->
   <style>
-    /* 결과 섹션(오른쪽 패널)의 모서리를 화면 크기에 따라 다르게 설정합니다. */
+    #resultsSection { border-radius: 0; }
 
-    /* 모바일 및 태블릿 기본: 화면을 꽉 채우기 위해 모서리를 직각(0)으로 설정합니다 */
-    #resultsSection {
-      border-radius: 0;
-    }
-
-    /* 데스크탑(1024px 이상): 왼쪽 하단만 80px로 크게 둥글게, 나머지는 필요한 만큼 조절합니다 */
     @media (min-width: 1024px) {
       #resultsSection {
+        /* top-left: 0 / top-right: 24px / bottom-right: 24px / bottom-left: 80px */
         border-radius: 0 1.5rem 1.5rem 5rem;
-        /* 상단-좌: 0, 상단-우: 1.5rem(24px), 하단-우: 1.5rem(24px), 하단-좌: 5rem(80px) */
       }
     }
   </style>
 
+  <!--
+    [Config]: Design Token Mapping
+    style-guide.md의 색상·타이포그래피·간격 명세를 Tailwind 커스텀 테마로 1:1 매핑합니다.
+    디자인 토큰 값을 변경해야 할 경우, style-guide.md와 이 블록을 항상 함께 수정하세요.
+  -->
   <script>
-    // Tailwind 설정: style-guide.md의 가이드를 완벽하게 반영합니다
     tailwind.config = {
       theme: {
         extend: {
-          // 1. 색상 매핑 (Colors)
           colors: {
-            lime: "#D8DB2F",        // Primary: Lime
-            "lime-dark": "#C5C829", // Hover state
-            "lime-light": "#E9EB94", // Hover state: Lime + White 50% mix
-            "err-red": "#D73328",   // Primary: Red
-            "slate-100": "#E4F4FD", // Neutral: Slate 100
-            "slate-300": "#9ABED5", // Neutral: Slate 300
-            "slate-500": "#6B94A8", // Neutral: Slate 500
-            "slate-700": "#4E6E7E", // Neutral: Slate 700
-            "slate-900": "#133041", // Neutral: Slate 900
+            lime:        "#D8DB2F",
+            "lime-dark": "#C5C829",
+            "lime-light":"#E9EB94",
+            "err-red":   "#D73328",
+            "slate-100": "#E4F4FD",
+            "slate-300": "#9ABED5",
+            "slate-500": "#6B94A8",
+            "slate-700": "#4E6E7E",
+            "slate-900": "#133041",
           },
-          // 2. 타이포그래피 프리셋 매핑 (Typography)
           fontSize: {
             preset1: ["56px", { lineHeight: "125%", letterSpacing: "-1px", fontWeight: "700" }],
             preset2: ["24px", { lineHeight: "125%", letterSpacing: "-1px", fontWeight: "700" }],
             preset3: ["18px", { lineHeight: "125%", letterSpacing: "-1px", fontWeight: "700" }],
-            preset4: ["16px", { lineHeight: "150%", letterSpacing: "0px", fontWeight: "500" }],
-            preset5: ["14px", { lineHeight: "150%", letterSpacing: "0px", fontWeight: "500" }],
+            preset4: ["16px", { lineHeight: "150%", letterSpacing: "0px",  fontWeight: "500" }],
+            preset5: ["14px", { lineHeight: "150%", letterSpacing: "0px",  fontWeight: "500" }],
           },
-          // 3. 간격 매핑 (Spacing)
           spacing: {
             "spacing-500": "40px",
             "spacing-400": "32px",
@@ -75,88 +73,103 @@
   </script>
 </head>
 
-<!-- body: Spacing 300(24px)과 0을 활용한 반응형 여백 설정 -->
-
 <body class="min-h-screen bg-slate-100 flex items-center justify-center font-sans p-0 lg:p-spacing-300">
 
-  <!-- 
-    메인 컨테이너: 앱의 전체 구성을 담는 바구니입니다.
-    - 모바일: 화면 끝까지 꽉 차게 모서리 여백을 뺍니다(rounded-none)
-    - 데스크탑: 큼직하고 둥글게 만들어(md:rounded-3xl) 부드러운 느낌을 줍니다
-  -->
-  <main /* md:max-w-[688px]: 태블릿 화면에서 박스가 너무 옆으로 퍼지지 않게 최대 너비를 688px로 제한합니다 */ /* lg:max-w-[1008px]: 데스크탑 화면에서는 더욱 넉넉하게
-    1008px의 최대 너비를 가집니다 */ /* md:shadow-[0_32px_64px_0_rgba(19,48,65,0.1)]: 태블릿 화면에서 깊이감 있는 커스텀 그림자를 적용했습니다 */ /*
-    md:rounded-3xl: 태블릿 화면 이상부터는 모서리를 24px(1.5rem)로 부드럽게 깎아줍니다 */
+  <main
     class="w-full md:max-w-[688px] lg:max-w-[1008px] bg-white rounded-none md:rounded-3xl overflow-hidden flex flex-col lg:flex-row md:shadow-[0_32px_64px_0_rgba(19,48,65,0.1)]"
-    role="main" aria-label="모기지 상환 계산기">
+    role="main"
+    aria-label="모기지 상환 계산기">
 
-    <!-- 왼쪽 입력 폼: 태블릿 이상(md)부터 40px 여백, 데스크탑(lg)에서는 504px 고정 너비를 가집니다 -->
-    <section class="flex-1 lg:flex-none lg:w-[504px] py-spacing-400 px-spacing-300 md:p-spacing-500"
+    <!-- ============================================================
+         [Section]: Form Panel
+         ============================================================ -->
+    <section
+      class="flex-1 lg:flex-none lg:w-[504px] py-spacing-400 px-spacing-300 md:p-spacing-500"
       aria-label="모기지 정보 입력 폼">
 
-      <!-- 제목 줄: 태블릿 이상(md)부터는 하단 여백을 40px(spacing-500)로 넉넉하게 설정합니다 -->
-      <div
-        class="flex flex-col items-start md:flex-row md:items-center justify-between mb-spacing-300 md:mb-spacing-500 gap-2">
-        <!-- 메인 제목 (Preset 2) -->
-        <h1 class="text-preset2 text-slate-900">
-          Mortgage Calculator
-        </h1>
-        <!-- Clear All 버튼: 텍스트 프리셋 4(16px, 500)와 슬레이트 700 색상을 적용합니다 -->
-        <button id="clearAllBtn" type="button"
+      <!-- [Component]: Form Header -->
+      <div class="flex flex-col items-start md:flex-row md:items-center justify-between mb-spacing-300 md:mb-spacing-500 gap-2">
+        <h1 class="text-preset2 text-slate-900">Mortgage Calculator</h1>
+        <button
+          id="clearAllBtn"
+          type="button"
           class="text-preset4 text-slate-700 underline hover:text-slate-900 transition-colors duration-200"
           aria-label="모든 입력값 초기화">
           Clear All
         </button>
       </div>
 
+      <!--
+        NOTE: novalidate — 브라우저 기본 유효성 검사 팝업을 비활성화합니다.
+        에러 UI와 메시지를 JS에서 직접 제어해 디자인 일관성을 유지하기 위함입니다.
+      -->
       <form id="mortgageForm" novalidate>
-        <!-- 1. 모기지 금액 (Spacing 300 + Preset 5/4 적용) -->
+
+        <!-- [Component]: Mortgage Amount Input -->
         <div class="mb-spacing-300">
           <label for="mortgageAmount" class="block text-preset4 font-medium text-slate-700 mb-spacing-150">
             Mortgage Amount
           </label>
 
-          <div id="amountWrapper" /* amountWrapper: 금액 입력창과 파운드 기호를 하나로 묶어주는 박스입니다 */ /* rounded-[4px]: 모서리 반경을 4px로
-            설정하여 깔끔한 사각형 모양을 만듭니다 */ /* border-slate-500: 평소에는 차분한 어두운 회색 테두리를 가집니다 */ /* hover:border-slate-900: 마우스를 올리면 테두리가 진한 slate-900 색으로 변합니다 */
+          <!--
+            NOTE: group + focus-within 패턴
+            입력창이 포커스될 때 badge(£ 기호) 배경색을 라임으로 바꾸기 위해
+            부모에 group 클래스를 부여하고, 자식 badge에 group-focus-within:bg-lime 을 적용합니다.
+            에러 상태일 때는 JS가 border-slate-500 을 border-err-red 로 교체합니다.
+          -->
+          <div
+            id="amountWrapper"
             class="group flex w-full rounded-[4px] border border-slate-500 overflow-hidden hover:border-slate-900 focus-within:border-lime focus-within:hover:border-lime transition-colors duration-200 cursor-pointer">
-            <span /* badge-left: 기호 영역의 기본 클래스 */ /* w-[44px]: 너비를 44px로 고정 */ /* flex-shrink-0: 화면이 좁아져도 칸이 찌그러지지 않게 방어
-              */ /* flex items-center justify-center: 기호를 가로세로 중앙에 배치 */ /* px-0 py-spacing-150: 위아래 여백 설정 */ /*
-              bg-slate-100: 배경색 연한 회색 */ /* text-slate-700: 글자색 진한 회색 */ /* font-bold: 글씨 두껍게 */ /* text-preset3: 18px
-              크기의 Preset 3 스타일 적용 */ /* select-none border-0: 선택 불가능 및 테두리 제거 */
-              /* group-focus-within:bg-lime: 입력창이 선택되면 배경색을 라임색으로 바꿉니다 */
+            <span
               class="badge-left w-[44px] flex-shrink-0 flex items-center justify-center px-0 py-spacing-150 bg-slate-100 text-slate-700 group-focus-within:bg-lime group-focus-within:text-slate-900 font-bold text-preset3 select-none border-0"
               aria-hidden="true">
               £
             </span>
-            <input type="text" id="mortgageAmount" name="mortgageAmount" inputmode="numeric" /* type="text" : 천 단위
-              콤마(,)를 화면에 보여주기 위해 텍스트 형식을 사용합니다 */ /* inputmode="numeric" : 모바일 기기에서 숫자 키보드가 바로 뜨도록 도와줍니다 */ /*
-              text-preset3: 요청하신 대로 글자 크기를 18px(Preset 3)로 키워 가독성을 높였습니다 */
+            <!--
+              NOTE: type="text" + inputmode="numeric"
+              type="number"는 브라우저가 천 단위 콤마 표시를 허용하지 않습니다.
+              type="text"로 두어 JS가 실시간 콤마 포맷팅을 할 수 있게 하고,
+              inputmode="numeric"으로 모바일에서 숫자 키보드가 열리도록 유도합니다.
+            -->
+            <input
+              type="text"
+              id="mortgageAmount"
+              name="mortgageAmount"
+              inputmode="numeric"
               class="flex-1 w-full min-w-0 pl-[16px] pr-spacing-200 py-spacing-150 text-slate-900 font-bold text-preset3 outline-none bg-white"
-              aria-describedby="amountError" aria-required="true" />
+              aria-describedby="amountError"
+              aria-required="true" />
           </div>
+          <!-- NOTE: role="alert" — 에러 메시지가 visible 상태로 전환될 때 스크린 리더가 즉시 읽도록 합니다. -->
           <p id="amountError" class="hidden text-err-red text-preset5 mt-spacing-150" role="alert">
             This field is required
           </p>
         </div>
 
-        <!-- 2, 3. 기간/이자율 (Spacing 300 + Preset 5/4 적용) -->
+        <!-- [Component]: Term & Rate Inputs (sm 이상에서 수평 배치) -->
         <div class="flex flex-col sm:flex-row gap-spacing-300 mb-spacing-300">
 
           <div class="flex-1 w-full min-w-0">
             <label for="mortgageTerm" class="block text-preset4 font-medium text-slate-700 mb-spacing-150">
               Mortgage Term
             </label>
-            <div id="termWrapper" /* termWrapper: 기간 입력창과 'years' 단위를 하나로 묶어주는 박스입니다 */ /* rounded-[4px]: 입력창과 버튼들의 모서리
-              모양을 4px로 모두 통일합니다 */ /* hover:border-slate-900: 마우스를 올리면 테두리가 진해지는 피드백을 줍니다 */
+            <div
+              id="termWrapper"
               class="group flex w-full rounded-[4px] border border-slate-500 overflow-hidden hover:border-slate-900 focus-within:border-lime focus-within:hover:border-lime transition-colors duration-200 cursor-pointer">
-              <input type="number" id="mortgageTerm" name="mortgageTerm" min="1" max="40" /* mortgageTerm: 상환 기간(몇 년 동안
-                갚을지)을 입력받는 칸입니다 */ /* min="1" max="40" : 최소 1년에서 최대 40년까지만 입력 가능하게 범위를 정합니다 */ /* aria-required="true" :
-                스크린 리더에게 이 칸이 필수 입력 사항임을 알려줍니다 */ /* text-preset3: 입력되는 기간 숫자를 시원하게 18px 크기(Preset 3)로 보여줍니다 */
+              <!--
+                NOTE: [appearance:textfield] + spin-button 제거
+                type="number"의 기본 증감 화살표(spinner)는 디자인에 없으므로 Tailwind 임의값으로 제거합니다.
+              -->
+              <input
+                type="number"
+                id="mortgageTerm"
+                name="mortgageTerm"
+                min="1"
+                max="40"
                 class="flex-1 w-full min-w-0 px-spacing-200 py-spacing-150 text-slate-900 font-bold text-preset3 outline-none bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                aria-describedby="termError" aria-required="true" />
-              <span /* badge-right: 입력창 오른쪽에 붙는 단위(years) 표시 영역입니다 */ /* w-[80px]: 글자가 여유롭게 들어가도록 너비를 80px로 고정했습니다 */ /*
-                flex-shrink-0: 화면 크기와 상관없이 고정된 너비를 유지합니다 */ /* text-preset3: 더욱 잘 보이도록 18px 크기의 Preset 3 스타일을 적용합니다 */
-                /* group-focus-within:bg-lime: 입력창이 선택되면 배경색을 라임색으로 바꿉니다 */
+                aria-describedby="termError"
+                aria-required="true" />
+              <span
                 class="badge-right w-[80px] flex-shrink-0 flex items-center justify-center px-0 py-spacing-150 bg-slate-100 text-slate-700 group-focus-within:bg-lime group-focus-within:text-slate-900 font-bold text-preset3 select-none border-0"
                 aria-hidden="true">
                 years
@@ -171,18 +184,19 @@
             <label for="interestRate" class="block text-preset4 font-medium text-slate-700 mb-spacing-150">
               Interest Rate
             </label>
-            <div id="rateWrapper" /* rateWrapper: 이자율 입력창과 '%' 기호를 하나로 묶는 박스입니다 */ /* rounded-[4px]: 디자인의 일관성을 위해 여기도
-              똑같이 4px 반경을 적용합니다 */ /* hover:border-slate-900: 마우스 호버 시 테두리 색상을 어둡게 변경합니다 */
+            <div
+              id="rateWrapper"
               class="group flex w-full rounded-[4px] border border-slate-500 overflow-hidden hover:border-slate-900 focus-within:border-lime focus-within:hover:border-lime transition-colors duration-200 cursor-pointer">
-              <input type="number" id="interestRate" name="interestRate" min="0" step="0.01" /* interestRate: 은행 이자율(%)을
-                입력받는 칸입니다 */ /* step="0.01" : 소수점 둘째 자리(예: 5.25%)까지 입력할 수 있게 설정합니다 */ /* text-preset3: 입력되는 이자율 숫자도 똑같이
-                18px(Preset 3)로 맞춰 통일감을 줍니다 */
+              <input
+                type="number"
+                id="interestRate"
+                name="interestRate"
+                min="0"
+                step="0.01"
                 class="flex-1 w-full min-w-0 px-spacing-200 py-spacing-150 text-slate-900 font-bold text-preset3 outline-none bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                aria-describedby="rateError" aria-required="true" />
-              <span /* badge-right: 입력창 오른쪽에 붙는 단위(%) 표시 영역입니다 */ /* w-[51px]: 요청하신 대로 이 칸의 너비를 51px로 딱 맞춰서 고정합니다 */ /*
-                flex-shrink-0: 부모 박스가 좁아져도 51px 너비를 그대로 유지하도록 방어합니다 */ /* px-0: 너비가 고정되었으므로 글자가 정중앙에 오도록 좌우 여백을 제거합니다 */
-                /* text-preset3: 글자를 조금 더 강조하기 위해 18px 크기의 Preset 3를 적용합니다 */
-                /* group-focus-within:bg-lime: 입력창이 선택되면 배경색을 라임색으로 바꿉니다 */
+                aria-describedby="rateError"
+                aria-required="true" />
+              <span
                 class="badge-right w-[51px] flex-shrink-0 flex items-center justify-center px-0 py-spacing-150 bg-slate-100 text-slate-700 group-focus-within:bg-lime group-focus-within:text-slate-900 font-bold text-preset3 select-none border-0"
                 aria-hidden="true">
                 %
@@ -192,51 +206,45 @@
               This field is required
             </p>
           </div>
+
         </div>
 
-        <!-- 4. 모기지 유형: 태블릿 이상(md)부터는 하단 여백을 40px(spacing-500)로 넉넉하게 설정합니다 -->
+        <!-- [Component]: Mortgage Type Radio Group -->
         <div class="mb-spacing-300 md:mb-spacing-500">
-          <p /* text-preset4: 이전의 작은 글씨(preset5)가 아닌, 다른 라벨들과 똑같은 16px 크기를 적용합니다 */ /* font-medium text-slate-700: 중간
-            두께와 차분한 회색으로 제목을 표시합니다 */ class="text-preset4 font-medium text-slate-700 mb-spacing-150">
-            Mortgage Type
-          </p>
+          <p class="text-preset4 font-medium text-slate-700 mb-spacing-150">Mortgage Type</p>
 
+          <!--
+            NOTE: 커스텀 라디오 버튼 구현 전략
+            실제 <input type="radio">는 sr-only로 숨기고 peer 클래스를 부여합니다.
+            부모 <label>에 has-[:checked]를 적용해 선택 시 테두리·배경색을 CSS만으로 변경합니다.
+            단, CSS의 peer-checked는 직계 형제까지만 전파되므로, 내부 점(dot) span의
+            hidden 토글은 CSS로 불가해 app.js의 이벤트 핸들러가 대신 처리합니다.
+          -->
           <fieldset aria-label="모기지 유형 선택">
             <legend class="sr-only">모기지 유형</legend>
 
-            <label /* radio-label: 라디오 버튼과 글자를 하나로 묶어주는 박스입니다 */ /* gap-[18.25px]: 요청하신 대로 버튼과 글자 사이의 간격을 18.25px로 아주
-              정밀하게 조절했습니다 */ /* border border-slate-500: 평소에는 차분한 어두운 회색 테두리를 가집니다 */ /* rounded-[4px]: 모서리는 이전에 정한 대로
-              4px을 유지합니다 */ /* has-[:checked]:bg-lime/15: 선택되었을 때 배경색을 라임색의 15% 투명도로 아주 부드럽게 채워줍니다 */
+            <label
               class="radio-label flex items-center gap-[18.25px] border border-slate-500 rounded-[4px] px-spacing-300 py-spacing-150 mb-spacing-150 cursor-pointer hover:border-lime transition-colors duration-200 has-[:checked]:border-lime has-[:checked]:bg-lime/15"
               aria-label="Repayment (원리금 균등상환) 선택">
               <input type="radio" name="mortgageType" value="repayment" class="peer sr-only" />
-              <span /* span: 라디오 버튼의 바깥쪽 큰 원입니다 */ /* border-slate-700: 요청하신 대로 테두리를 더 진한 slate-700 색상으로 변경했습니다 */ /*
-                peer-checked: border-lime: 실제로 클릭되어 체크되면 테두리가 라임색으로 변합니다 */
-                class="w-5 h-5 rounded-full border-2 border-slate-700 flex items-center justify-center flex-shrink-0 peer-checked:border-lime"
-                aria-hidden="true">
-                <span /* 이 span은 라디오 버튼이 선택되었을 때만 나타나는 가운데의 작은 점입니다 */
-                  class="w-2.5 h-2.5 rounded-full bg-lime hidden peer-checked:block"></span>
-              </span>
-              <span /* text-preset3: 선택지 글자를 18px의 굵은 텍스트로 만들어 눈에 잘 띄게 합니다 */ /* text-slate-900: 거의 검정에 가까운 진한 색상으로 신뢰감을
-                줍니다 */ class="text-preset3 font-bold text-slate-900">
-                Repayment
-              </span>
-            </label>
-
-            <label /* gap-[18.25px]: 여기 이자율 상환 박스도 똑같이 18.25px 간격을 주어 통일감을 높입니다 */ /* has-[:checked]:border-lime: 체크되면
-              박스 전체 테두리가 상큼한 라임색으로 변합니다 */ /* has-[:checked]:bg-lime/15: 이 옵션도 똑같이 15% 투명도를 적용하여 통일감을 유지합니다 */
-              class="radio-label flex items-center gap-[18.25px] border border-slate-500 rounded-[4px] px-spacing-300 py-spacing-150 cursor-pointer hover:border-lime transition-colors duration-200 has-[:checked]:border-lime has-[:checked]:bg-lime/15"
-              aria-label="Interest Only (이자만 상환) 선택">
-              <input type="radio" name="mortgageType" value="interest-only" class="peer sr-only" />
-              <span /* slate-700 테두리를 적용하여 체크되지 않았을 때도 모양이 뚜렷하게 보이게 합니다 */
+              <span
                 class="w-5 h-5 rounded-full border-2 border-slate-700 flex items-center justify-center flex-shrink-0 peer-checked:border-lime"
                 aria-hidden="true">
                 <span class="w-2.5 h-2.5 rounded-full bg-lime hidden peer-checked:block"></span>
               </span>
-              <span /* text-preset3: 이자만 상환하는 옵션도 똑같이 Preset 3를 적용하여 통일감을 줍니다 */
-                class="text-preset3 font-bold text-slate-900">
-                Interest Only
+              <span class="text-preset3 font-bold text-slate-900">Repayment</span>
+            </label>
+
+            <label
+              class="radio-label flex items-center gap-[18.25px] border border-slate-500 rounded-[4px] px-spacing-300 py-spacing-150 cursor-pointer hover:border-lime transition-colors duration-200 has-[:checked]:border-lime has-[:checked]:bg-lime/15"
+              aria-label="Interest Only (이자만 상환) 선택">
+              <input type="radio" name="mortgageType" value="interest-only" class="peer sr-only" />
+              <span
+                class="w-5 h-5 rounded-full border-2 border-slate-700 flex items-center justify-center flex-shrink-0 peer-checked:border-lime"
+                aria-hidden="true">
+                <span class="w-2.5 h-2.5 rounded-full bg-lime hidden peer-checked:block"></span>
               </span>
+              <span class="text-preset3 font-bold text-slate-900">Interest Only</span>
             </label>
           </fieldset>
 
@@ -245,87 +253,77 @@
           </p>
         </div>
 
-        <!-- 계산 버튼 (Spacing 500 하단 여백 대용 및 Preset 4 적용) -->
-        <button type="submit" /* type="submit" : 이 버튼을 누르면 폼에 입력된 데이터들을 가지고 계산을 시작하게 됩니다 */ /* gap-spacing-150: 아이콘과 글자
-          사이에 12px만큼의 간격을 줍니다 */ /* bg-lime hover:bg-lime-light: 기본은 라임색이고, 마우스를 올리면 훨씬 밝고 부드러운 라임색(lime/white 50% mix)으로 변합니다 */ /*
-          text-preset3: 요청하신 대로 글자 크기를 18px(Preset 3)로 키워 버튼을 강조했습니다 */ /* rounded-full: 버튼의 양 끝을 아주 둥글게(알약 모양) 만듭니다 */
-          /* md:w-[314px]: 태블릿 이상(md)부터는 버튼이 너무 옆으로 길어지지 않게 314px로 고집 너비를 설정합니다 */
+        <!-- [Component]: Submit Button -->
+        <button
+          type="submit"
           class="w-full md:w-[314px] flex items-center justify-center gap-spacing-150 bg-lime hover:bg-lime-light text-slate-900 font-bold text-preset3 py-spacing-200 px-spacing-500 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-lime focus:ring-offset-2"
           aria-label="모기지 상환액 계산하기">
-          <img /* src: 계산기 모양의 아이콘 이미지를 불러옵니다 */ /* w-6 h-6: 요청하신 대로 아이콘 크기를 24x24px로 키워 시인성을 높였습니다 */ /*
-            aria-hidden="true" : 아이콘은 디자인용(장식용)이므로 스크린 리더가 읽지 않게 숨깁니다 */ src="assets/images/icon-calculator.svg" alt=""
-            class="w-6 h-6" aria-hidden="true" />
+          <img src="assets/images/icon-calculator.svg" alt="" class="w-6 h-6" aria-hidden="true" />
           Calculate Repayments
         </button>
+
       </form>
     </section>
 
-    <section /* resultsSection: 계산 결과가 표시되는 우측 남색 영역입니다 */ /* py-spacing-400: 모바일 상하 여백 32px */ /* px-spacing-300: 모바일
-      좌우 여백 24px */ /* md:p-spacing-500: 태블릿 이상(md)부터 40px 여백 */ /* lg:w-[504px]: 데스크탑에서 504px 고정 너비 */
+    <!-- ============================================================
+         [Section]: Results Panel
+         aria-live="polite" — 계산 결과가 업데이트될 때 현재 읽기를 방해하지 않고
+         스크린 리더가 다음 순서에 변경 내용을 읽어줍니다. (assertive는 읽기를 즉시 끊습니다)
+         ============================================================ -->
+    <section
       class="flex-1 lg:flex-none lg:w-[504px] bg-slate-900 flex flex-col items-center justify-start py-spacing-400 px-spacing-300 md:p-spacing-500"
-      id="resultsSection" aria-label="계산 결과 영역" aria-live="polite">
+      id="resultsSection"
+      aria-label="계산 결과 영역"
+      aria-live="polite">
 
-      <!-- 대기 화면: 계산 전 보여주는 안내 영역입니다. 요청하신 대로 안쪽 여백을 0으로 설정했습니다. -->
-      <div id="emptyState" /* p-0: 모든 방향의 여백을 0으로 만들어, 부모 요소의 여백 규정을 온전히 따르게 합니다 */
-        /* flex-1 justify-center: 대기 화면일 때는 부모 영역의 높이를 꽉 채우고(flex-1) 내용을 세로 중앙에 배치(justify-center)합니다 */
-        class="flex-1 flex flex-col items-center justify-center text-center p-0">
-        <img /* src: 결과가 없을 때 보여주는 빈 일러스트 이미지입니다 */ /* mb-spacing-200: 이미지 아래의 여백을 기존 32px에서 요청하신 16px로 줄여 제목과 적절한 거리를
-          둡니다 */ src="assets/images/illustration-empty.svg" alt="계산 결과 대기 중" class="w-48 mb-spacing-200" />
-        <h2 class="text-white text-preset2 mb-spacing-200">
-          Results shown here
-        </h2>
-        <p /* text-slate-300: 어두운 배경색에서도 글자가 잘 보이도록 밝은 회색(Slate 300)을 적용했습니다 */ /* text-preset4: 요청하신 대로 글자 크기를
-          16px(Preset 4)로 키워 가독성을 높였습니다 */ /* md:max-w-[608px]: 태블릿 화면에서 줄바꿈이 자연스럽도록 최대 너비를 608px로 제한합니다 */
-          class="text-slate-300 text-preset4 max-w-xs md:max-w-[608px]">
+      <!-- [State]: Empty — 최초 진입 시 기본 표시 상태. 계산 성공 시 JS가 hidden 처리합니다. -->
+      <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-center p-0">
+        <img src="assets/images/illustration-empty.svg" alt="계산 결과 대기 중" class="w-48 mb-spacing-200" />
+        <h2 class="text-white text-preset2 mb-spacing-200">Results shown here</h2>
+        <p class="text-slate-300 text-preset4 max-w-xs md:max-w-[608px]">
           Complete the form and click "calculate repayments" to see what
           your monthly repayments would be.
         </p>
       </div>
-      <!-- ── 결과 화면: 계산 완료 후 보이는 결과 카드 ── -->
-      <div id="resultsState" /* p-0: 모든 방향의 여백을 0으로 설정하여, 부모인 resultsSection의 패딩 안에서 정렬되게 합니다 */
-        class="hidden w-full p-0">
-        <h2 /* text-preset2: 결과 제목임을 알 수 있도록 24px의 굵은 텍스트를 사용합니다 */ /* mb-spacing-200: 제목 아래의 여백을 요청하신 대로 16px로 설정하여
-          가독성을 높입니다 */ class="text-white text-preset2 mb-spacing-200">
-          Your results
-        </h2>
-        <p /* text-slate-500: 차분한 회색으로 설명 문구를 표시합니다 */ /* text-preset4: 요청하신 대로 16px(Preset 4) 크기를 적용하여 설명 내용을 더 잘 보이게
-          했습니다 */ /* mb-spacing-300: 하단 결과 카드와의 간격을 요청하신 24px로 사뿐하게 조정했습니다 */ /* md:max-w-[608px]: 태블릿 화면에서 텍스트가 너무 퍼지지
-          않게 608px로 너비를 제한합니다 */ class="text-slate-500 text-preset4 mb-spacing-300 md:max-w-[608px]">
+
+      <!-- [State]: Results — 초기에는 hidden. 계산 성공 시 JS가 hidden을 제거해 표시합니다. -->
+      <div id="resultsState" class="hidden w-full p-0">
+        <h2 class="text-white text-preset2 mb-spacing-200">Your results</h2>
+        <p class="text-slate-500 text-preset4 mb-spacing-300 md:max-w-[608px]">
           Your results are shown below based on the information you provided.
           To adjust the results, edit the form and click "calculate repayments" again.
         </p>
 
-        <!-- 결과 카드: 요청하신 대로 안쪽 여백을 상하 24px(spacing-300), 좌우 16px(spacing-200)로 설정했습니다 -->
-        <div /* bg-slate-900: 더 깊은 남색 배경을 사용하여 정보를 강조합니다 */ /* border-t-4 border-lime: 상단에 라임색 두꺼운 테두리를 주어 포인트를 매깁니다 */
-          /* rounded-[8px]: 모서리를 8px로 깎아 단정한 느낌을 줍니다 */ /* py-spacing-300: 상하 여백을 24px로 설정합니다 */ /* px-spacing-200: 좌우
-          여백을 16px로 설정하여 가독성을 높입니다 */ /* md:p-spacing-400: 태블릿 이상(md)부터는 안쪽 여백을 32px로 넉넉하게 적용합니다 */
+        <!--
+          [Component]: Result Card
+          NOTE: bg-slate-900이 이미 부모에 적용되어 있으므로, 카드에는 투명도 25%의 검정을
+          inline style로 얹어 구분감을 만듭니다. Tailwind bg-black/25로 대체 가능하나,
+          정확한 rgba값 보장을 위해 inline style을 유지합니다.
+        -->
+        <div
           class="bg-slate-900 border-t-4 border-lime rounded-[8px] py-spacing-300 px-spacing-200 md:p-spacing-400"
-          style="background-color: rgba(0,0,0,0.25);" role="region" aria-label="계산 결과 카드">
-          <!-- 월 상환액 (Preset 4와 Slate 300 색상 적용) -->
+          style="background-color: rgba(0,0,0,0.25);"
+          role="region"
+          aria-label="계산 결과 카드">
           <p class="text-slate-300 text-preset4 mb-spacing-100">Your monthly repayments</p>
-          <p id="monthlyRepayment" /* text-[40px]: 모바일에서는 40px로 적절한 크기를 유지합니다 */ /* md:text-preset1: 태블릿 이상(md)의 큰 화면에서는
-            시원하게 56px(Preset 1)로 대폭 키워서 보여줍니다 */ /* mb-spacing-200: 모바일에서는 하단 여백을 16px로 유지합니다 */ /* md:mb-spacing-500:
-            태블릿 이상(md)부터는 하단 여백을 40px로 넉넉하게 설정합니다 */
-            class="text-lime text-[40px] md:text-preset1 font-bold mb-spacing-200 md:mb-spacing-500" aria-label="월 상환액">
+          <p
+            id="monthlyRepayment"
+            class="text-lime text-[40px] md:text-preset1 font-bold mb-spacing-200 md:mb-spacing-500"
+            aria-label="월 상환액">
             £0.00
           </p>
 
-          <!-- 구분선 (Slate 300 25% 투명도 적용, 모바일 여백 16px, 태블릿 이상 32px) -->
           <hr class="border-slate-300/25 mb-spacing-200 md:mb-spacing-400" />
 
-          <!-- 총 상환액 (Preset 4와 Slate 300 색상 적용) -->
           <p class="text-slate-300 text-preset4 mb-spacing-100">Total you'll repay over the term</p>
-          <p id="totalRepayment" class="text-white text-preset2" aria-label="총 상환액">
-            £0.00
-          </p>
+          <p id="totalRepayment" class="text-white text-preset2" aria-label="총 상환액">£0.00</p>
         </div>
       </div>
 
     </section>
   </main>
 
-  <!-- app.js 연결: defer 속성 덕분에 HTML을 모두 읽은 뒤 실행됩니다 -->
-  <!-- defer: "나중에 실행해줘" 라는 뜻으로, HTML 파싱을 막지 않아 페이지 로딩이 빠릅니다 -->
+  <!-- NOTE: defer — HTML 파싱을 차단하지 않고, DOM이 완전히 구성된 뒤 스크립트를 실행합니다. -->
   <script src="app.js" defer></script>
 
 </body>
